@@ -1,0 +1,211 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "containerName": {
+            "type": "String"
+        },
+        "containerURI": {
+            "type": "String"
+        },
+        "imageRegistryLoginServer": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "imageUsername": {
+            "defaultValue": "",
+            "type": "String"
+        },
+        "imagePassword": {
+            "defaultValue": "",
+            "type": "SecureString"
+        },
+        "osType": {
+            "allowedValues": [
+                "Linux",
+                "Windows"
+            ],
+            "type": "String"
+        },
+        "numberCores": {
+            "type": "String"
+        },
+        "memory": {
+            "type": "String"
+        },
+        "ports": {
+            "defaultValue": "80",
+            "type": "String"
+        },
+        "portProtocol": {
+            "defaultValue": "tcp",
+            "type": "string"
+        },
+        "containerType": {
+            "allowedValues": [
+                "publicImage-publicIP",
+                "publicImage-privateIP",
+                "privateImage-publicIP",
+                "privateImage-privateIP"
+            ],
+            "type": "String"
+        }
+    },
+    "variables": {
+        "containerName": "[parameters('containerName')]",
+        "_bothPublic": "[equals(parameters('containerType'),'publicImage-publicIP')]",
+        "_publicImageOnly": "[equals(parameters('containerType'),'publicImage-privateIP')]",
+        "_publicIPOnly": "[equals(parameters('containerType'),'privateImage-publicIP')]",
+        "_bothPrivate": "[equals(parameters('containerType'),'privateImage-privateIP')]",
+        "containerURI": "[parameters('containerURI')]",
+        "imageRegistryLoginServer": "[parameters('imageRegistryLoginServer')]",
+        "imageUsername": "[parameters('imageUsername')]",
+        "imagePassword": "[parameters('imagePassword')]",
+        "osType": "[parameters('osType')]",
+        "numberCores": "[int(parameters('numberCores'))]",
+        "memory": "[float(parameters('memory'))]",
+        "port": "[parameters('ports')]",
+        "randomName": "[concat('-',substring(parameters('containerName'),0,3))]"
+    },
+    "resources": [
+        {
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "name": "[concat(variables('containerName'),variables('randomName'),'1')]",
+            "apiVersion": "2017-08-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[variables('containerName')]",
+                        "properties": {
+                            "image": "[variables('containerURI')]",
+                            "ports": [
+                                {
+                                    "port": "[variables('port')]"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": "[variables('numberCores')]",
+                                    "memoryInGb": "[variables('memory')]"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "[variables('osType')]",
+                "ipAddress": {
+                    "type": "Public",
+                    "ports": [
+                        {
+                            "protocol": "tcp",
+                            "port": "[variables('port')]"
+                        }
+                    ]
+                }
+            },
+            "condition": "[variables('_bothPublic')]"
+        },
+        {
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "name": "[concat(variables('containerName'),variables('randomName'),'3')]",
+            "apiVersion": "2017-08-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[variables('containerName')]",
+                        "properties": {
+                            "image": "[variables('containerURI')]",
+                            "resources": {
+                                "requests": {
+                                    "cpu": "[variables('numberCores')]",
+                                    "memoryInGb": "[variables('memory')]"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "[variables('osType')]"
+            },
+            "condition": "[variables('_publicImageOnly')]"
+        },
+        {
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "name": "[concat(variables('containerName'),variables('randomName'),'4')]",
+            "apiVersion": "2017-08-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[variables('containerName')]",
+                        "properties": {
+                            "image": "[variables('containerURI')]",
+                            "ports": [
+                                {
+                                    "port": "[variables('port')]"
+                                }
+                            ],
+                            "resources": {
+                                "requests": {
+                                    "cpu": "[variables('numberCores')]",
+                                    "memoryInGb": "[variables('memory')]"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "[variables('osType')]",
+                "ipAddress": {
+                    "type": "Public",
+                    "ports": [
+                        {
+                            "protocol": "[parameters('portProtocol')]",
+                            "port": "[variables('port')]"
+                        }
+                    ]
+                },
+                "imageRegistryCredentials": [
+                    {
+                        "server": "[parameters('imageRegistryLoginServer')]",
+                        "username": "[parameters('imageUsername')]",
+                        "password": "[parameters('imagePassword')]"
+                    }
+                ]
+            },
+            "condition": "[variables('_publicIPOnly')]"
+        },
+        {
+            "type": "Microsoft.ContainerInstance/containerGroups",
+            "name": "[concat(variables('containerName'),variables('randomName'),'2')]",
+            "apiVersion": "2017-08-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "containers": [
+                    {
+                        "name": "[variables('containerName')]",
+                        "properties": {
+                            "image": "[variables('containerURI')]",
+                            "resources": {
+                                "requests": {
+                                    "cpu": "[variables('numberCores')]",
+                                    "memoryInGb": "[variables('memory')]"
+                                }
+                            }
+                        }
+                    }
+                ],
+                "osType": "[variables('osType')]",
+                "imageRegistryCredentials": [
+                    {
+                        "server": "[parameters('imageRegistryLoginServer')]",
+                        "username": "[parameters('imageUsername')]",
+                        "password": "[parameters('imagePassword')]"
+                    }
+                ]
+            },
+            "condition": "[variables('_bothPrivate')]"
+        }
+    ],
+    "outputs": {}
+}
